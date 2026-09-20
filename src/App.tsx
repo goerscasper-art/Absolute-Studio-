@@ -8,7 +8,7 @@ import { SignInModal } from './components/SignInModal';
 import { AppRunnerModal } from './components/AppRunnerModal';
 import { StatusBar } from './components/StatusBar';
 import { StudioTab, AppBuild, ChatMessage, UserProfile } from './types';
-import { generateClientFallbackApp } from './utils/clientFallbackGenerator';
+import { generateAppClientSide } from './utils/clientGeminiGenerator';
 import { getRandomPersona } from './utils/characters';
 
 const USER_STORAGE_KEY = 'beaver_studio_user';
@@ -150,8 +150,13 @@ export default function App() {
           }),
         });
       } catch (apiErr) {
-        console.warn('API /api/generate unavailable or failed on workers.dev, using client-side fallback synthesizer:', apiErr);
-        data = generateClientFallbackApp(promptText);
+        console.warn('API /api/generate unavailable on workers.dev, attempting client-side Gemini generation:', apiErr);
+        try {
+          data = await generateAppClientSide(promptText, code, appTitle);
+        } catch (clientGeminiErr: any) {
+          console.warn('Client-side Gemini generation failed:', clientGeminiErr);
+          throw new Error('Ran out of daily credits. Please check your Gemini API key.');
+        }
       }
 
       if (data.code) {
@@ -212,7 +217,7 @@ export default function App() {
         id: `msg_err_${Date.now()}`,
         role: 'assistant',
         content: 'Generation encountered an error. Please try another prompt.',
-        summary: err.message || 'Error communicating with AI engine',
+        summary: err.message || 'Ran out of daily credits. Please check your Gemini API key.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -287,7 +292,7 @@ export default function App() {
 
     try {
       const pubId = `pub_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      const payload = {
+      const payload: AppBuild = {
         id: pubId,
         title: details.title,
         description: details.description,
@@ -299,6 +304,8 @@ export default function App() {
         userId: user.id,
         tags: details.tags.length > 0 ? details.tags : ['Web App'],
         createdAt: new Date().toISOString(),
+        views: 1,
+        likes: 0,
       };
 
       let publishedApp = payload;

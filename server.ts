@@ -24,6 +24,7 @@ if (!fs.existsSync(DATA_DIR)) {
 
 const PUBLIC_APPS_FILE = path.join(DATA_DIR, 'public-apps.json');
 const USER_BUILDS_FILE = path.join(DATA_DIR, 'user-builds.json');
+const HIGH_SCORES_FILE = path.join(DATA_DIR, 'high-scores.json');
 
 // Helper to read JSON file safely
 function readJsonFile<T>(filePath: string, defaultVal: T): T {
@@ -53,6 +54,9 @@ if (!fs.existsSync(PUBLIC_APPS_FILE)) {
 }
 if (!fs.existsSync(USER_BUILDS_FILE)) {
   writeJsonFile(USER_BUILDS_FILE, []);
+}
+if (!fs.existsSync(HIGH_SCORES_FILE)) {
+  writeJsonFile(HIGH_SCORES_FILE, {});
 }
 
 // Lazy Gemini API Client
@@ -181,6 +185,44 @@ app.post('/api/apps/:id/view', (req, res) => {
     writeJsonFile(PUBLIC_APPS_FILE, apps);
   }
   return res.json({ success: true });
+});
+
+// GET high scores for an app
+app.get('/api/apps/:id/scores', (req, res) => {
+  const { id } = req.params;
+  const allScores = readJsonFile<Record<string, any[]>>(HIGH_SCORES_FILE, {});
+  const scores = allScores[id] || [];
+  scores.sort((a, b) => Number(b.score) - Number(a.score));
+  res.json(scores);
+});
+
+// POST submit high score for an app
+app.post('/api/apps/:id/scores', (req, res) => {
+  const { id } = req.params;
+  const { playerName, score, avatar } = req.body;
+  if (score === undefined || score === null) {
+    return res.status(400).json({ error: 'Score is required' });
+  }
+
+  const allScores = readJsonFile<Record<string, any[]>>(HIGH_SCORES_FILE, {});
+  if (!allScores[id]) {
+    allScores[id] = [];
+  }
+
+  const newEntry = {
+    id: `score_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    playerName: playerName || 'Anonymous Player',
+    score: Number(score),
+    avatar: avatar || '',
+    date: new Date().toISOString(),
+  };
+
+  allScores[id].push(newEntry);
+  allScores[id].sort((a, b) => Number(b.score) - Number(a.score));
+  allScores[id] = allScores[id].slice(0, 100);
+
+  writeJsonFile(HIGH_SCORES_FILE, allScores);
+  return res.json({ success: true, scores: allScores[id] });
 });
 
 // GET saved builds for user
