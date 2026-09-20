@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 
 export async function generateAppClientSide(prompt: string, currentCode?: string, appTitle?: string) {
-  const apiKey = localStorage.getItem('gemini_api_key') || (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) || '';
+  const apiKey = localStorage.getItem('gemini_api_key') || (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) || (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) || '';
   if (!apiKey) {
     throw new Error('Gemini API key is required for real AI generation on Cloudflare workers.dev. Please set your Gemini API key in Settings or click the API Key button in the top bar.');
   }
