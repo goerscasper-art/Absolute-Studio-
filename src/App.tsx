@@ -150,13 +150,8 @@ export default function App() {
           }),
         });
       } catch (apiErr) {
-        console.warn('API /api/generate unavailable on workers.dev, attempting client-side Gemini generation:', apiErr);
-        try {
-          data = await generateAppClientSide(promptText, code, appTitle);
-        } catch (clientGeminiErr: any) {
-          console.warn('Client-side Gemini generation failed:', clientGeminiErr);
-          throw new Error('Ran out of daily credits. Please check your Gemini API key.');
-        }
+        console.warn('API /api/generate unavailable on workers.dev, utilizing robust client-side generator:', apiErr);
+        data = await generateAppClientSide(promptText, code, appTitle);
       }
 
       if (data.code) {
