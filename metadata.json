@@ -1,0 +1,8 @@
+{
+  "name": "Absolute Studio",
+  "description": "AI Studio web application builder with public community gallery and Windows-style interface.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
