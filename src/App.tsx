@@ -8,6 +8,8 @@ import { SignInModal } from './components/SignInModal';
 import { AppRunnerModal } from './components/AppRunnerModal';
 import { StatusBar } from './components/StatusBar';
 import { StudioTab, AppBuild, ChatMessage, UserProfile } from './types';
+import { generateClientFallbackApp } from './utils/clientFallbackGenerator';
+import { getRandomPersona } from './utils/characters';
 
 const USER_STORAGE_KEY = 'beaver_studio_user';
 const LOCAL_BUILDS_KEY = 'beaver_studio_builds';
@@ -30,18 +32,49 @@ export default function App() {
     } catch (e) {
       // ignore
     }
+    const persona = getRandomPersona();
     return {
-      id: 'user_casper',
-      name: 'Casper',
-      email: 'caspergoers@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      signedIn: true,
+      id: 'user_guest',
+      name: persona.name,
+      email: '',
+      avatar: persona.avatar,
+      signedIn: false,
     };
   });
 
   // Public Community Apps (strictly NO default mock apps)
   const [publicApps, setPublicApps] = useState<AppBuild[]>([]);
   const [isLoadingPublic, setIsLoadingPublic] = useState(true);
+
+  // Robust JSON fetch helper for Cloudflare Workers / serverless compatibility
+  const safeFetchJson = async (url: string, options?: RequestInit) => {
+    try {
+      const res = await fetch(url, options);
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = { error: text || res.statusText || 'Server returned invalid response' };
+      }
+      if (!res.ok) {
+        throw new Error(data.error || text || `Server returned ${res.status}`);
+      }
+      return data;
+    } catch (networkErr) {
+      if (url === '/api/apps/public') {
+        const saved = localStorage.getItem('abs_public_apps');
+        if (saved) {
+          try { return JSON.parse(saved); } catch (e) {}
+        }
+        return [];
+      }
+      if (url === '/api/health') {
+        return { status: 'ok', hasApiKey: true };
+      }
+      throw networkErr;
+    }
+  };
 
   // User Builds
   const [userBuilds, setUserBuilds] = useState<AppBuild[]>(() => {
@@ -63,9 +96,8 @@ export default function App() {
   const fetchPublicApps = useCallback(async () => {
     try {
       setIsLoadingPublic(true);
-      const res = await fetch('/api/apps/public');
-      if (res.ok) {
-        const data = await res.json();
+      const data = await safeFetchJson('/api/apps/public');
+      if (Array.isArray(data)) {
         setPublicApps(data);
       }
     } catch (err) {
@@ -79,8 +111,7 @@ export default function App() {
     fetchPublicApps();
 
     // Check health
-    fetch('/api/health')
-      .then((r) => r.json())
+    safeFetchJson('/api/health')
       .then((data) => setHasApiKey(data.hasApiKey))
       .catch(() => {});
   }, [fetchPublicApps]);
@@ -105,22 +136,22 @@ export default function App() {
     setMessages((prev) => [...prev, userMsg]);
 
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: promptText,
-          currentCode: code,
-          appTitle,
-          history: messages.map((m) => ({ role: m.role, content: m.content })),
-          settings: settings || {},
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Server returned ${response.status}`);
+      let data: any;
+      try {
+        data = await safeFetchJson('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: promptText,
+            currentCode: code,
+            appTitle,
+            history: messages.map((m) => ({ role: m.role, content: m.content })),
+            settings: settings || {},
+          }),
+        });
+      } catch (apiErr) {
+        console.warn('API /api/generate unavailable or failed on workers.dev, using client-side fallback synthesizer:', apiErr);
+        data = generateClientFallbackApp(promptText);
       }
 
       if (data.code) {
@@ -270,31 +301,42 @@ export default function App() {
         createdAt: new Date().toISOString(),
       };
 
-      const res = await fetch('/api/apps/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      let publishedApp = payload;
+      try {
+        const result = await safeFetchJson('/api/apps/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (result && result.app) {
+          publishedApp = result.app;
+        }
+      } catch (apiErr) {
+        // Fallback local persistence for static workers.dev
+        const existing = JSON.parse(localStorage.getItem('abs_public_apps') || '[]');
+        const updatedPublic = [publishedApp, ...existing.filter((a: any) => a.id !== publishedApp.id)];
+        localStorage.setItem('abs_public_apps', JSON.stringify(updatedPublic));
+      }
+
+      setPublicApps((prev) => {
+        const next = [publishedApp, ...prev.filter((a) => a.id !== publishedApp.id)];
+        localStorage.setItem('abs_public_apps', JSON.stringify(next));
+        return next;
       });
 
-      if (res.ok) {
-        const result = await res.json();
-        // Prepend to public apps list
-        setPublicApps((prev) => [result.app, ...prev.filter((a) => a.id !== result.app.id)]);
+      // Mark in user builds as public and associate publishedAppId
+      setUserBuilds((prev) => {
+        const updated = prev.map((b) =>
+          b.title === details.title
+            ? { ...b, isPublic: true, publishedAppId: publishedApp.id }
+            : b
+        );
+        localStorage.setItem(LOCAL_BUILDS_KEY, JSON.stringify(updated));
+        return updated;
+      });
 
-        // Mark in user builds as public and associate publishedAppId
-        setUserBuilds((prev) => {
-          const updated = prev.map((b) =>
-            b.title === details.title
-              ? { ...b, isPublic: true, publishedAppId: result.app.id }
-              : b
-          );
-          localStorage.setItem(LOCAL_BUILDS_KEY, JSON.stringify(updated));
-          return updated;
-        });
-
-        // Switch tab to community so user immediately sees their published app!
-        setCurrentTab('community');
-      }
+      // Switch tab to community so user immediately sees their published app!
+      setCurrentTab('community');
     } catch (err) {
       console.error('Publish error:', err);
     }

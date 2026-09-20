@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, User, Check, ShieldCheck, Sparkles } from 'lucide-react';
 import { UserProfile } from '../types';
+import { CHARACTER_PERSONAS, getDefaultNameForAvatar } from '../utils/characters';
 
 interface SignInModalProps {
   isOpen: boolean;
@@ -9,13 +10,7 @@ interface SignInModalProps {
   onSaveProfile: (profile: UserProfile) => void;
 }
 
-const AVATAR_OPTIONS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
-];
+const AVATAR_OPTIONS = CHARACTER_PERSONAS.map(p => p.avatar);
 
 export const SignInModal: React.FC<SignInModalProps> = ({
   isOpen,
@@ -25,9 +20,15 @@ export const SignInModal: React.FC<SignInModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const [name, setName] = useState(user.name || 'Casper Creator');
-  const [email, setEmail] = useState(user.email || 'caspergoers@gmail.com');
+  const [name, setName] = useState(user.name || 'Creator');
+  const [email, setEmail] = useState(user.email || '');
   const [selectedAvatar, setSelectedAvatar] = useState(user.avatar || AVATAR_OPTIONS[0]);
+
+  const handleSelectAvatar = (av: string) => {
+    setSelectedAvatar(av);
+    const defaultName = getDefaultNameForAvatar(av);
+    setName(defaultName);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,16 +75,31 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
           {/* Avatar Picker */}
           <div>
-            <label className="block font-medium text-[#e0e0e0] mb-2">Select Avatar</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block font-medium text-[#e0e0e0]">Select Character</label>
+              <span className="text-[10px] text-[#a0a0a0]">
+                {selectedAvatar === AVATAR_OPTIONS[0] && 'Girl on left (Emo)'}
+                {selectedAvatar === AVATAR_OPTIONS[1] && 'Guy on center left (Peanut Butter)'}
+                {selectedAvatar === AVATAR_OPTIONS[2] && 'Girl in center (White Girl)'}
+                {selectedAvatar === AVATAR_OPTIONS[3] && 'Guy on center right (Joker w/o Makeup)'}
+                {selectedAvatar === AVATAR_OPTIONS[4] && 'Guy on right (White Male Protagonist)'}
+              </span>
+            </div>
             <div className="flex items-center justify-center gap-2">
               {AVATAR_OPTIONS.map((av, idx) => (
                 <button
                   type="button"
                   key={idx}
-                  onClick={() => setSelectedAvatar(av)}
+                  onClick={() => handleSelectAvatar(av)}
                   className={`relative rounded-full p-0.5 transition-all cursor-pointer ${
                     selectedAvatar === av ? 'ring-2 ring-[#60cdff] scale-105' : 'opacity-70 hover:opacity-100'
                   }`}
+                  title={
+                    idx === 0 ? 'Girl on left (Emo)' :
+                    idx === 1 ? 'Guy on center left (Peanut butter)' :
+                    idx === 2 ? 'Girl in center (White girl)' :
+                    idx === 3 ? 'Guy on center right (Joker w/o makeup)' : 'Guy on right (White male protagonist)'
+                  }
                 >
                   <img
                     src={av}
