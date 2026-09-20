@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Globe, FolderGit2, UploadCloud, Check, User, ChevronDown, Edit2 } from 'lucide-react';
+import { Sparkles, Globe, FolderGit2, UploadCloud, Check, User, ChevronDown, Edit2, Key } from 'lucide-react';
 import { StudioTab, UserProfile } from '../types';
 
 interface HeaderProps {
@@ -13,6 +13,7 @@ interface HeaderProps {
   user: UserProfile;
   onOpenSignIn: () => void;
   publicAppsCount: number;
+  onOpenApiKeyModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -26,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   user,
   onOpenSignIn,
   publicAppsCount,
+  onOpenApiKeyModal,
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(appTitle);
@@ -122,7 +124,20 @@ export const Header: React.FC<HeaderProps> = ({
       </nav>
 
       {/* Right: Actions, Publish, Account & Windows Controls */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
+        {/* Gemini AI Status / Key button */}
+        {onOpenApiKeyModal && (
+          <button
+            onClick={onOpenApiKeyModal}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#a0a0a0] hover:text-[#60cdff] bg-[#1a1a1a] hover:bg-[#252525] border border-[#333333] hover:border-[#444444] rounded transition-all cursor-pointer"
+            title="Gemini AI Engine Settings (gemini-3.6-flash)"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-[#2ac471]" />
+            <Key className="w-3 h-3 text-[#60cdff]" />
+            <span className="hidden sm:inline font-mono text-[11px]">Gemini 3.6</span>
+          </button>
+        )}
+
         {/* Publish to Public Page */}
         <button
           onClick={onPublishClick}

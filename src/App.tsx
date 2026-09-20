@@ -6,6 +6,7 @@ import { MyBuilds } from './components/MyBuilds';
 import { PublishModal } from './components/PublishModal';
 import { SignInModal } from './components/SignInModal';
 import { AppRunnerModal } from './components/AppRunnerModal';
+import { ApiKeyModal } from './components/ApiKeyModal';
 import { StatusBar } from './components/StatusBar';
 import { StudioTab, AppBuild, ChatMessage, UserProfile } from './types';
 import { generateAppClientSide } from './utils/clientGeminiGenerator';
@@ -23,6 +24,7 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(true);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
 
   // User session
   const [user, setUser] = useState<UserProfile>(() => {
@@ -211,8 +213,8 @@ export default function App() {
       const errorMsg: ChatMessage = {
         id: `msg_err_${Date.now()}`,
         role: 'assistant',
-        content: 'Generation encountered an error. Please try another prompt.',
-        summary: err.message || 'Ran out of daily credits. Please check your Gemini API key.',
+        content: 'AI Generation was unable to complete this request.',
+        summary: err?.message || 'Error communicating with Gemini AI. Please try again.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -484,6 +486,7 @@ export default function App() {
         user={user}
         onOpenSignIn={() => setIsSignInOpen(true)}
         publicAppsCount={publicApps.length}
+        onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
       />
 
       {/* Main Viewport Router */}
@@ -582,6 +585,12 @@ export default function App() {
               runningApp.authorName === user.name ||
               !runningApp.userId)
         )}
+      />
+
+      {/* Gemini AI Key & Engine Modal */}
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
       />
     </div>
   );
