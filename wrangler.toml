@@ -1,6 +1,6 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "absolutestudio"
-main = "server.cjs"
+name = "a"
+main = "dist/server.cjs"
 compatibility_date = "2026-09-20"
 compatibility_flags = [ "nodejs_compat" ]
 no_bundle = true
