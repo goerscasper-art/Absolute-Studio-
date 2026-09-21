@@ -11,4 +11,3 @@ binding = "ASSETS"
 
 [vars]
 # GEMINI_API_KEY is managed securely via the Cloudflare Dashboard variables tab
-
