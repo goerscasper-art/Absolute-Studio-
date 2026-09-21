@@ -2,8 +2,8 @@
 name = "a-s-s"
 main = "dist/server.js"
 compatibility_date = "2026-09-20"
-compatibility_flags = [ "nodejs_compat" ]
 no_bundle = true
 
 [assets]
 directory = "./dist"
+binding = "ASSETS"
