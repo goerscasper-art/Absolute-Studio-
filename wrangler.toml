@@ -1,15 +1,13 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "absolutestudio"
+name = "absolutely-studio"
 main = "dist/server.cjs"
 compatibility_date = "2026-09-20"
 compatibility_flags = [ "nodejs_compat" ]
+no_bundle = true
 
 [assets]
 directory = "./dist"
 binding = "ASSETS"
-
-[alias]
-"@vitejs/devtools/config" = "./public/metadata.json"
 
 [vars]
 # GEMINI_API_KEY is managed securely via the Cloudflare Dashboard variables tab
