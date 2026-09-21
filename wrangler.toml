@@ -1,5 +1,5 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "absolutely-studio"
+name = "a-s"
 main = "dist/server.cjs"
 compatibility_date = "2026-09-20"
 compatibility_flags = [ "nodejs_compat" ]
